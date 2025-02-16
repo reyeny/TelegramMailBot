@@ -4,8 +4,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using TelegaBot.Context;
+using TelegaBot.Controller;
 using TelegaBot.Services;
-using TelegaBot.Services.Handler;
+using TelegaBot.Services.Handlers;
 using TelegaBot.Services.Interfaces;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
@@ -24,6 +25,7 @@ if (string.IsNullOrWhiteSpace(botToken))
 builder.Services.AddSingleton<ITelegramBotClient>(new TelegramBotClient(botToken));
 builder.Services.AddSingleton(new ReceiverOptions());
 builder.Services.AddScoped<UpdateHandlerService>();
+builder.Services.AddScoped<BotController>();
 builder.Services.AddScoped<IBotService, BotService>();
 builder.Services.AddScoped<IUserService, UserService>();
 
@@ -46,7 +48,7 @@ app.MapGet("/", () => "Hello from root!");
 app.MapControllers();
 
 // Запускаем бота
-var bot = app.Services.GetRequiredService<IBotService>();
-bot.Start();
+var bot = app.Services.GetRequiredService<BotController>();
+bot.StartBot();
 
 app.Run();

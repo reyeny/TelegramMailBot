@@ -1,16 +1,11 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
-namespace TelegaBot.Services.Handler
+namespace TelegaBot.Services.Handlers
 {
-    public class UpdateHandlerService
+    public class UpdateHandlerService(ITelegramBotClient botClient)
     {
-        private readonly ITelegramBotClient _botClient;
-
-        public UpdateHandlerService(ITelegramBotClient botClient)
-        {
-            _botClient = botClient;
-        }
+        private readonly ITelegramBotClient _botClient = botClient;
 
         [Obsolete("Obsolete")]
         public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)

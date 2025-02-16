@@ -1,53 +1,35 @@
-using Microsoft.AspNetCore.Mvc;
-using TelegaBot.Models;
-using TelegaBot.Services.Interfaces;
-using Telegram.Bot.Types;
+using TelegaBot.Services.Handlers;
+using Telegram.Bot;
+using Telegram.Bot.Polling;
 
 namespace TelegaBot.Controller
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class BotController : ControllerBase
+    public class BotController(
+        ITelegramBotClient botClient,
+        ReceiverOptions receiverOptions,
+        UpdateHandlerService updateHandler)
     {
-        private readonly IBotService _botService;
-        private readonly IUserService _userService;
+        private CancellationTokenSource? _cts;
 
-        public BotController(IBotService botService, IUserService userService)
+        public void StartBot()
         {
-            _botService = botService;
-            _userService = userService;
+            _cts = new CancellationTokenSource();
+
+            botClient.StartReceiving(
+                updateHandler.HandleUpdateAsync,
+                updateHandler.HandleErrorAsync,
+                receiverOptions,
+                _cts.Token
+            );
+
+            Console.WriteLine("Bot polling started.");
         }
 
-        [HttpPost("update")]
-        public async Task<IActionResult> PostUpdate([FromBody] Update update)
+        public void StopBot()
         {
-            if (update?.Message is not null)
-            {
-                var chatId = update.Message.Chat.Id;
-                var messageText = update.Message.Text;
-
-                await _botService.SendMessageAsync(chatId, $"Вы написали: {messageText}");
-            }
-
-            return Ok();
+            _cts?.Cancel();
+            Console.WriteLine("Bot polling stopped.");
         }
-
-        [HttpPost("add-mail")]
-        public async Task<IActionResult> AddMail([FromBody] UserMail? mail)
-        {
-            if (mail == null)
-                return BadRequest("Mail data is null");
-
-            await _userService.AddMailAsync(mail);
-            return Ok(mail);
-        }
-
-        // Пример эндпоинта для отправки сообщения (вручную, из вашего кода)
-        [HttpPost("send-message")]
-        public async Task<IActionResult> SendTestMessage([FromQuery] long chatId, [FromQuery] string message)
-        {
-            await _botService.SendMessageAsync(chatId, message);
-            return Ok("Message sent");
-        }
+        
     }
 }
