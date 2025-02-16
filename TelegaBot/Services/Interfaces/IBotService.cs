@@ -1,6 +1,12 @@
-namespace TelegaBot.Services.Interfaces;
+using Telegram.Bot;
+using Telegram.Bot.Types;
 
-public interface IBotService
+namespace TelegaBot.Services.Interfaces
 {
-    Task SendMessageAsync(long chatId, string message);
+    public interface IBotService
+    {
+        Task SendMessageAsync(long chatId, string message);
+        void Command(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken);
+
+    }
 }

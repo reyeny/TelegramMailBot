@@ -1,35 +1,39 @@
-using TelegaBot.Services.Handlers;
+using TelegaBot.Services.Interfaces;
 using Telegram.Bot;
-using Telegram.Bot.Polling;
+using Telegram.Bot.Exceptions;
+using Telegram.Bot.Types;
 
 namespace TelegaBot.Controller
 {
-    public class BotController(
-        ITelegramBotClient botClient,
-        ReceiverOptions receiverOptions,
-        UpdateHandlerService updateHandler)
+    public class BotController(IBotService botService)
     {
-        private CancellationTokenSource? _cts;
-
-        public void StartBot()
+        public async Task UpdateHandler(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
-            _cts = new CancellationTokenSource();
-
-            botClient.StartReceiving(
-                updateHandler.HandleUpdateAsync,
-                updateHandler.HandleErrorAsync,
-                receiverOptions,
-                _cts.Token
-            );
-
-            Console.WriteLine("Bot polling started.");
-        }
-
-        public void StopBot()
-        {
-            _cts?.Cancel();
-            Console.WriteLine("Bot polling stopped.");
+            try
+            {
+                botService.Command(botClient, update, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
         }
         
+        
+        public Task HandleErrorAsync(
+            ITelegramBotClient client,
+            Exception exception,
+            CancellationToken cancellationToken)
+        {
+            var errorMessage = exception switch
+            {
+                ApiRequestException apiRequestException =>
+                    $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
+                _ => exception.ToString()
+            };
+
+            Console.WriteLine(errorMessage);
+            return Task.CompletedTask;
+        }
     }
 }

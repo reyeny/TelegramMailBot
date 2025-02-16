@@ -4,5 +4,7 @@ namespace TelegaBot.Services.Interfaces;
 
 public interface IUserService
 {
-    Task AddMailAsync(UserMail? userMail);
+    Task<int> GetUsersCountAsync();
+    Task<User?> GetUser(long userId);
+    Task<bool> AddUserAsync(User? user);
 }

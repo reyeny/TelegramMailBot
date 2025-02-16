@@ -29,7 +29,7 @@ namespace TelegaBot.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<long>("TelegramUserId")
+                    b.Property<long>("TelegramChatId")
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");

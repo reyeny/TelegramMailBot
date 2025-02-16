@@ -1,23 +1,29 @@
+using Microsoft.EntityFrameworkCore;
 using TelegaBot.Context;
 using TelegaBot.Models;
 using TelegaBot.Services.Interfaces;
 using Telegram.Bot;
 
-namespace TelegaBot.Services;
-
-public class UserService(TelegaBotContext context, TelegramBotClient botClient, IBotService botService) : IUserService
+namespace TelegaBot.Services
 {
-    private readonly TelegaBotContext _context = context;
-    private readonly TelegramBotClient _botClient = botClient;
-    private readonly IBotService _botService = botService;
-
-    public async Task AddMailAsync(UserMail? userMail)
+    public class UserService(TelegaBotContext context, ITelegramBotClient botClient) : IUserService
     {
-        await _context.UserMails.AddAsync(userMail);
-        await _context.SaveChangesAsync();
+        private readonly ITelegramBotClient _botClient = botClient;
 
-        await _botService.SendMessageAsync(
-            userMail!.User.TelegramUserId,
-            "Почта успешно добавлена!");
+        public async Task<int> GetUsersCountAsync() 
+            => await context.Users.CountAsync();
+    
+        public async Task<User?> GetUser(long userId) 
+            => await context.Users.FirstOrDefaultAsync(x => x.Id == userId);
+
+        public async Task<bool> AddUserAsync(User? user)
+        {
+            var userCheck = await context.Users.FirstOrDefaultAsync(x => x.Id == user!.Id);
+            if (userCheck != null && userCheck.TelegramChatId == user!.TelegramChatId)
+                return false;
+            
+            await context.Users.AddAsync(user!);
+            return true;
+        }
     }
 }
