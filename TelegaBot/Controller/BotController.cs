@@ -1,17 +1,25 @@
 using TelegaBot.Services.Interfaces;
+using TelegaBot.Services.Receiver;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 
 namespace TelegaBot.Controller
 {
-    public class BotController(IBotService botService)
+    public class BotController(IBotService botService, MessageReceiver messageReceiver)
     {
         public async Task UpdateHandler(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
             try
             {
                 botService.Command(botClient, update, cancellationToken);
+                
+                if (update is { Type: UpdateType.Message, Message.Text: { } messageText })
+                {
+                    var chatId = update.Message.Chat.Id;
+                    messageReceiver.ReceiveMessage(chatId, messageText);
+                }
             }
             catch (Exception ex)
             {
