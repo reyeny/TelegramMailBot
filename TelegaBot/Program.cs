@@ -7,6 +7,7 @@ using TelegaBot.Context;
 using TelegaBot.Controller;
 using TelegaBot.Services;
 using TelegaBot.Services.Interfaces;
+using TelegaBot.Services.Receiver;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types.Enums;
@@ -25,6 +26,7 @@ if (string.IsNullOrWhiteSpace(botToken))
     throw new Exception("Bot token not found.");
 
 builder.Services.AddSingleton<ITelegramBotClient>(new TelegramBotClient(botToken));
+builder.Services.AddSingleton<MessageReceiver>(); 
 builder.Services.AddSingleton(new ReceiverOptions());
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IBotService, BotService>();
