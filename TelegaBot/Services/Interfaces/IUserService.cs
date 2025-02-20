@@ -7,4 +7,5 @@ public interface IUserService
     Task<int> GetUsersCountAsync();
     Task<User?> GetUser(long userId);
     Task<bool> AddUserAsync(User? user);
+    Task<int> GetUserIdByTelegramChatIdAsync(long chatId);
 }

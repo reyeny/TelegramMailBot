@@ -18,12 +18,19 @@ namespace TelegaBot.Services
 
         public async Task<bool> AddUserAsync(User? user)
         {
-            var userCheck = await context.Users.FirstOrDefaultAsync(x => x.Id == user!.Id);
+            var userCheck = await context.Users.FirstOrDefaultAsync(x => x.TelegramChatId == user!.TelegramChatId);
             if (userCheck != null && userCheck.TelegramChatId == user!.TelegramChatId)
                 return false;
             
             await context.Users.AddAsync(user!);
+            await context.SaveChangesAsync();
             return true;
+        }
+
+        public Task<int> GetUserIdByTelegramChatIdAsync(long chatId)
+        {
+            var user  = context.Users.FirstOrDefault(x => x.TelegramChatId == chatId);
+            return Task.FromResult(user!.Id);
         }
     }
 }

@@ -28,6 +28,7 @@ builder.Services.AddSingleton<ITelegramBotClient>(new TelegramBotClient(botToken
 builder.Services.AddSingleton(new ReceiverOptions());
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IBotService, BotService>();
+builder.Services.AddScoped<IUserMailService, UserMailService>();
 builder.Services.AddScoped<BotController>();
 
 builder.Services.AddControllers();

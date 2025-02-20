@@ -1,3 +1,4 @@
+using TelegaBot.Migrations;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
@@ -44,6 +45,9 @@ namespace TelegaBot.Services
                         case "/start":
                             _ = SendWelcomeMessage(chat.Id, botClient);
                             return;
+                        case "/addMail":
+                            _ = AddUserMail(chat.Id, botClient);
+                            return;
                         default:
                             return;
                     }
@@ -65,6 +69,14 @@ namespace TelegaBot.Services
                 chatId,
                 "Welcome to Telegram Bot!"
             );
+        }
+
+        private async Task AddUserMail(long chatId, ITelegramBotClient botClient)
+        {
+            
+            await botClient.SendTextMessageAsync(chatId, "Введите ваш логин:");
+            
+            
         }
     }
 }
