@@ -18,7 +18,9 @@ namespace TelegaBot.Controller
                 if (update is { Type: UpdateType.Message, Message.Text: { } messageText })
                 {
                     var chatId = update.Message.Chat.Id;
-                    messageReceiver.ReceiveMessage(chatId, messageText);
+                    var messageId = update.Message.MessageId; 
+
+                    messageReceiver.ReceiveMessage(chatId, messageText, messageId);
                 }
             }
             catch (Exception ex)

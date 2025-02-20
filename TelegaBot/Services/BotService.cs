@@ -1,5 +1,4 @@
 using Telegram.Bot;
-using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using TelegaBot.Services.Interfaces;
 using TelegaBot.Services.Receiver;
@@ -7,110 +6,114 @@ using TelegaBot.Validators;
 using Telegram.Bot.Types.Enums;
 using User = TelegaBot.Models.User;
 
-namespace TelegaBot.Services
+namespace TelegaBot.Services;
+
+public class BotService(
+    ITelegramBotClient botClient,
+    IUserService userService,
+    IUserMailService userMailService,
+    MessageReceiver messageReceiver)
+    : IBotService
 {
-    public class BotService(
-        ITelegramBotClient botClient,
-        ReceiverOptions receiverOptions,
-        IUserService userService,
-        IUserMailService userMailService,
-        MessageReceiver messageReceiver)
-        : IBotService
+    [Obsolete("Obsolete")]
+    public async Task SendMessageAsync(long chatId, string message)
     {
-        private readonly ReceiverOptions _receiverOptions = receiverOptions;
-        private CancellationTokenSource? _cts;
+        await botClient.SendTextMessageAsync(chatId, message);
+    }
 
+    [Obsolete("Obsolete")]
+    public void Command(ITelegramBotClient telegramBotClient, Update update, CancellationToken cancellationToken)
+    {
+        var message = update.Message;
+        var chat = message!.Chat;
 
-        public async Task SendMessageAsync(long chatId, string message)
+        switch (update.Type)
         {
-            await botClient.SendTextMessageAsync(chatId, message);
-        }
-
-        [Obsolete("Obsolete")]
-        public void Command(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
-        {
-            var message = update.Message;
-            var chat = message!.Chat;
-
-            switch (update.Type)
+            case UpdateType.Message:
             {
-                case UpdateType.Message:
+                switch (message.Text)
                 {
-                    switch (message.Text)
-                    {
-                        case "/start":
-                            _ = SendWelcomeMessage(chat.Id, botClient);
-                            return;
-                        case "/addMail":
-                            _ = AddUserMail(chat.Id, botClient);
-                            return;
-                        default:
-                            return;
-                    }
+                    case "/start":
+                        _ = SendWelcomeMessage(chat.Id, telegramBotClient);
+                        return;
+                    case "/addMail":
+                        _ = AddUserMail(chat.Id, telegramBotClient);
+                        return;
+                    default:
+                        return;
                 }
             }
         }
+    }
 
-        [Obsolete("Obsolete")]
-        private  async Task SendWelcomeMessage(long chatId, ITelegramBotClient botClient)
+    [Obsolete("Obsolete")]
+    private async Task SendWelcomeMessage(long chatId, ITelegramBotClient telegramBotClient)
+    {
+        var user = new User
         {
-            var user = new User
-            {
-                TelegramChatId = chatId,
-                Id = await userService.GetUsersCountAsync() + 1
-            };
-            await userService.AddUserAsync(user);
+            TelegramChatId = chatId,
+            Id = await userService.GetUsersCountAsync() + 1
+        };
+        await userService.AddUserAsync(user);
 
-            await botClient.SendTextMessageAsync(
-                chatId,
-                "Welcome to Telegram Bot!"
-            );
-        }
+        await telegramBotClient.SendTextMessageAsync(
+            chatId,
+            "Welcome to Telegram Bot!"
+        );
+    }
 
-        [Obsolete("Obsolete")]
-        private async Task AddUserMail(long chatId, ITelegramBotClient botClient)
+    [Obsolete("Obsolete")]
+    private async Task AddUserMail(long chatId, ITelegramBotClient telegramBotClient)
+    {
+        try
         {
-            try
-            {
-                await botClient.SendTextMessageAsync(chatId, "Введите вашу почту:");
-                var loginResponse = await messageReceiver.WaitForMessageAsync(chatId);
+            int? lastErrorId = null; 
+            string loginResponse;
 
-                if (!EmailValidator.IsValid(loginResponse))
+            await telegramBotClient.SendTextMessageAsync(chatId, "📧 Введите вашу почту:");
+
+            while (true)
+            {
+                var (response, messageId) = await messageReceiver.WaitForMessageAsync(chatId);
+                int? lastMessageId = messageId;
+
+                if (lastErrorId.HasValue)
                 {
-                    await botClient.SendTextMessageAsync(chatId, "Вы ввели неверный логин. Попробуйте снова.");
-                    return;
-                }
-                
-                if (string.IsNullOrWhiteSpace(loginResponse))
-                {
-                    await botClient.SendTextMessageAsync(chatId, "Логин не может быть пустым. Попробуйте снова.");
-                    return;
-                }
-                
-                var checkUserMail = await userMailService.NeedToAddUserMailAsync(chatId, loginResponse);
-                if (!checkUserMail)
-                {
-                    await botClient.SendTextMessageAsync(chatId, "Такая почта уже существует.");
-                    return;
+                    await telegramBotClient.DeleteMessageAsync(chatId, lastErrorId.Value);
                 }
 
-                await botClient.SendTextMessageAsync(chatId, "Введите ваш пароль:");
-                var passwordResponse = await messageReceiver.WaitForMessageAsync(chatId);
-                if (string.IsNullOrWhiteSpace(passwordResponse))
+                if (string.IsNullOrWhiteSpace(response) || !EmailValidator.IsValid(response))
                 {
-                    await botClient.SendTextMessageAsync(chatId, "Пароль не может быть пустым. Попробуйте снова.");
-                    return;
+                    await telegramBotClient.DeleteMessageAsync(chatId, lastMessageId.Value);
+                    var errorMessage =
+                        await telegramBotClient.SendTextMessageAsync(chatId, "❌ Некорректный email. Попробуйте снова:");
+                    lastErrorId = errorMessage.MessageId;
+                    continue;
                 }
-                
-                await userMailService.AddUserMailAsync(chatId, loginResponse, passwordResponse);
-                await botClient.SendTextMessageAsync(chatId, "Почта успешно добавлена.");
+
+                var emailExists = await userMailService.NeedToAddUserMailAsync(chatId, response);
+                if (!emailExists)
+                {
+                    await telegramBotClient.DeleteMessageAsync(chatId, lastMessageId.Value);
+                    var errorMessage = await telegramBotClient.SendTextMessageAsync(chatId,
+                        "⚠️ Такая почта уже зарегистрирована. Попробуйте снова:");
+                    lastErrorId = errorMessage.MessageId;
+                    continue;
+                }
+
+                loginResponse = response;
+                break;
             }
-            catch (Exception ex)
-            {
-                throw new Exception($"Произошла ошибка: {ex.Message}");
-            }
+
+            await telegramBotClient.SendTextMessageAsync(chatId, "🔑 Введите ваш пароль:");
+            var (passwordResponse, _) = await messageReceiver.WaitForMessageAsync(chatId);
+
+            await userMailService.AddUserMailAsync(chatId, loginResponse, passwordResponse);
+            await telegramBotClient.SendTextMessageAsync(chatId, "✅ Почта успешно добавлена!");
         }
-
-
+        catch (Exception ex)
+        {
+            throw new Exception($"Ошибка: {ex.Message}");
+        }
     }
 }
